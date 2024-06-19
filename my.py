@@ -60,7 +60,7 @@ def plot_predictions(image_path, predictions):
     plt.show()
 
 # Path to your image
-image_path = 'cubs3.PNG'
+image_path = 'cubs.PNG'
 
 # Detect and recognize text in the image
 recognized_texts = detect_text(image_path)
