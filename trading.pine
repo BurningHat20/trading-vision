@@ -1,0 +1,34 @@
+//@version=5
+indicator("EMA Crossover Strategy with Date", shorttitle="EMA Cross + Date", overlay=true)
+
+ema9 = ta.ema(close, 9)
+ema30 = ta.ema(close, 30)
+
+plot(ema9, color=color.blue)
+plot(ema30, color=color.red)
+
+// Variables to keep track of label IDs, declared with type 'label'
+var label label_id_buy = na
+var label label_id_sell = na
+
+// Buy Condition
+buy = ta.crossover(ema9, ema30)
+plotshape(buy, location=location.belowbar, color=color.green, style=shape.triangleup, size=size.large, text="BUY")
+
+// Sell Condition
+sell = ta.crossunder(ema9, ema30)
+plotshape(sell, location=location.abovebar, color=color.red, style=shape.labeldown, text="SELL")
+
+// Delete previous labels
+if (not na(label_id_buy))
+    label.delete(label_id_buy)
+if (not na(label_id_sell))
+    label.delete(label_id_sell)
+
+// Plot BUY label with increased text size
+if (buy)
+    label_id_buy := label.new(x=bar_index, y=low, text="BUY", style=label.style_label_up, color=color.black, textcolor=color.white, size=size.large)
+
+// Plot SELL label
+if (sell)
+    label_id_sell := label.new(x=bar_index, y=high, text="SELL", style=label.style_label_down, color=color.black, textcolor=color.white, size=size.large)
