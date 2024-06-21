@@ -1,66 +1,53 @@
-import matplotlib.pyplot as plt
+import os
+import cv2
+import datetime
 import keras_ocr
 
 # keras-ocr will automatically download pretrained weights for the detector and recognizer.
 pipeline = keras_ocr.pipeline.Pipeline()
 
-# Define the path to your local image
-image_paths = [
-    'BTC.png'  # Replace with your image path
-]
+# Define paths
+image_path = 'india.png'
+base_folder = 'D:/today'  # Update to your desired base folder path
 
-# Load the images
-images = [keras_ocr.tools.read(path) for path in image_paths]
+# Load and preprocess the image
+def resize_image(image, max_size=1024):
+    height, width = image.shape[:2]
+    if max(height, width) > max_size:
+        scaling_factor = max_size / float(max(height, width))
+        return cv2.resize(image, None, fx=scaling_factor, fy=scaling_factor, interpolation=cv2.INTER_AREA)
+    return image
 
-# Perform text detection and recognition
-if images:  # Proceed only if images were loaded
-    prediction_groups = pipeline.recognize(images)
-
-    # Create subplots
-    fig, axs = plt.subplots(nrows=len(images), figsize=(20, 20))
-    # Ensure axs is a list even if there is only one image
-    if len(images) == 1:
-        axs = [axs]
-
-    # Plot the predictions
-    for ax, image, predictions in zip(axs, images, prediction_groups):
-        # Filter predictions to keep only "TD", "BUY", and "SELL" labels
-        filtered_predictions = [prediction for prediction in predictions if prediction[0].upper() in ["TD", "BUY", "SELL"]]
-
-        # Sort the filtered predictions based on their x-coordinates (right to left)
-        filtered_predictions.sort(key=lambda x: x[1][0][0], reverse=True)
-
-        # Keep the rightmost "TD" prediction and the rightmost "BUY" or "SELL" prediction
-        rightmost_td_prediction = None
-        rightmost_buy_sell_prediction = None
-
-        for prediction in filtered_predictions:
-            label = prediction[0].upper()
-            if label == "TD" and rightmost_td_prediction is None:
-                rightmost_td_prediction = prediction
-            elif label in ["BUY", "SELL"] and rightmost_buy_sell_prediction is None:
-                rightmost_buy_sell_prediction = prediction
-
-        # Check if the rightmost "TD" prediction is vertically aligned with the rightmost "BUY" or "SELL" prediction
-        if rightmost_td_prediction and rightmost_buy_sell_prediction:
-            td_y = rightmost_td_prediction[1][0][1]
-            buy_sell_y = rightmost_buy_sell_prediction[1][0][1]
-            if abs(td_y - buy_sell_y) < 10:  # Adjust the threshold as needed
-                print(f"TD and {rightmost_buy_sell_prediction[0]}")
-            else:
-                print("None")
-        else:
-            print("None")
-
-        # Draw annotations for the rightmost predictions
-        predictions_to_draw = []
-        if rightmost_td_prediction:
-            predictions_to_draw.append(rightmost_td_prediction)
-        if rightmost_buy_sell_prediction:
-            predictions_to_draw.append(rightmost_buy_sell_prediction)
-
-        keras_ocr.tools.drawAnnotations(image=image, predictions=predictions_to_draw, ax=ax)
-
-    plt.show()
+# Load the image
+image_data = cv2.imread(image_path)
+if image_data is None:
+    print(f"Error: Could not load image at path: {image_path}")
 else:
-    print("No images to process.")
+    image_data = resize_image(image_data)
+
+    # Recognize text in the image
+    predictions = pipeline.recognize([image_data])
+
+    # Filter predictions
+    buy_predictions = [p for p in predictions[0] if p[0].upper() == 'BUY']
+    sell_predictions = [p for p in predictions[0] if p[0].upper() == 'SELL']
+
+    # Determine the folder path based on the current date
+    current_date = datetime.datetime.now().strftime("%d-%m-%Y")
+    folder_path = os.path.join(base_folder, current_date)
+
+    # Create folders if they don't exist
+    buy_folder = os.path.join(folder_path, 'Buy')
+    sell_folder = os.path.join(folder_path, 'Sell')
+    os.makedirs(buy_folder, exist_ok=True)
+    os.makedirs(sell_folder, exist_ok=True)
+
+    # Save the image in the appropriate folder
+    if buy_predictions:
+        cv2.imwrite(os.path.join(buy_folder, 'india.png'), image_data)
+        print("Image saved in Buy folder.")
+    elif sell_predictions:
+        cv2.imwrite(os.path.join(sell_folder, 'india.png'), image_data)
+        print("Image saved in Sell folder.")
+    else:
+        print("No BUY or SELL signal detected.")
